@@ -1,10 +1,18 @@
-```tcl
-apt-get update && apt-get install -y docker-compose docker-engine
+bash
+#!/bin/bash
+set -e
+
+apt-get update
+apt-get install -y docker-compose docker-engine
 systemctl enable --now docker
-mount -o loop /dev/sr0
-docker load -i /media/ALTLinux/docker/site_latest.tar
-docker load -i /media/ALTLinux/docker/mariadb_latest.tar
-cat << EOF >> /root/site.yml
+
+mkdir -p /media/ALTLinux
+mount -o loop /dev/sr0 /media/ALTLinux 2>/dev/null || true
+
+[ -f /media/ALTLinux/docker/site_latest.tar ] && docker load -i /media/ALTLinux/docker/site_latest.tar
+[ -f /media/ALTLinux/docker/mariadb_latest.tar ] && docker load -i /media/ALTLinux/docker/mariadb_latest.tar
+
+cat > /root/site.yml << 'EOF'
 services:
   db:
     image: mariadb
@@ -48,16 +56,16 @@ networks:
   app_network:
     driver: bridge
 EOF
-cat << EOF >> launch.sh
+
+cat > /root/launch.sh << 'EOF'
+#!/bin/bash
 docker compose -f site.yml up -d 
 sleep 5 
-docker exec -it db mysql -u root -pPassw0rd -e "
+docker exec db mysql -u root -pPassw0rd -e "
 CREATE DATABASE IF NOT EXISTS testdb;
-
 CREATE USER IF NOT EXISTS 'test'@'%' IDENTIFIED BY 'Passw0rd';
-
 GRANT ALL PRIVILEGES ON testdb.* TO 'test'@'%';
-
 FLUSH PRIVILEGES;"
 EOF
-```
+
+chmod +x /root/launch.sh
